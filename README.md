@@ -81,4 +81,4 @@ mise run check
 mise run verify
 ```
 
-`mise run check` runs formatting, linting, TypeScript, unit/release-contract tests, and an `npm pack --dry-run` boundary check. `mise run verify` additionally installs the packed tarball offline and runs the isolated tmux raw-terminal smoke. The smoke proves upload, virtual placement, placeholder, and owned-ID cleanup sequences; it does not prove pixels. For the required visual Ghostty + tmux capture, follow [assets/README.md](assets/README.md).
+`mise run check` runs formatting, linting, TypeScript, unit/release-contract tests, and an `npm pack --dry-run` boundary check. `mise run verify` additionally installs the packed tarball in an isolated temporary project and runs the isolated tmux raw-terminal smoke. The smoke proves upload, virtual placement, placeholder, and owned-ID cleanup sequences; it does not prove pixels. For the required visual Ghostty + tmux capture, follow [assets/README.md](assets/README.md).

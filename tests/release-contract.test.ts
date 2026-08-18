@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -96,14 +96,15 @@ test("Harness target, profile, and system map join on the canonical name", () =>
 });
 
 test("tracked project text has no accidental old-name references", () => {
-	const allowed = new Set([".git", "node_modules", ".harness-local"]);
-	const walk = (directory: string): string[] =>
-		readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-			if (allowed.has(entry.name)) return [];
-			const path = join(directory, entry.name);
-			return entry.isDirectory() ? walk(path) : [path];
-		});
-	const stale = walk(root).filter((path) => {
+	const projectFiles = execFileSync("git", ["ls-files", "-co", "--exclude-standard"], {
+		cwd: root,
+		encoding: "utf8",
+	})
+		.trim()
+		.split("\n")
+		.filter(Boolean)
+		.map((path) => join(root, path));
+	const stale = projectFiles.filter((path) => {
 		if (/\.(png|tgz)$/u.test(path)) return false;
 		try {
 			return readFileSync(path, "utf8").includes(["pi", "inline", "images"].join("-"));

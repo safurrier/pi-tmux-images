@@ -15,7 +15,7 @@ try {
 	execFileSync("npm", ["init", "-y"], { cwd: temp, stdio: "ignore" });
 	execFileSync(
 		"npm",
-		["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--legacy-peer-deps", packageFile],
+		["install", "--prefer-offline", "--ignore-scripts", "--no-audit", "--no-fund", "--legacy-peer-deps", packageFile],
 		{
 			cwd: temp,
 			stdio: "ignore",
