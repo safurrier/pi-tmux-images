@@ -1,0 +1,9 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+	"files": { "includes": ["**", "!node_modules", "!artifacts", "!test-results", "!.harness-local"] },
+	"linter": {
+		"enabled": true,
+		"rules": { "recommended": true, "style": { "useNamingConvention": "off", "useFilenamingConvention": "off" } }
+	},
+	"formatter": { "indentStyle": "tab", "lineWidth": 120 }
+}

@@ -1,0 +1,20 @@
+version = 1
+[system]
+name = "pi-inline-images"
+summary = "TUI-only Pi custom-entry image-preview package."
+[[components]]
+id = "extension-runtime"
+title = "Extension lifecycle and image previews"
+kind = "pi-extension"
+paths = ["extensions/**", "src/**", "tests/**"]
+validation_checks = ["check", "verify"]
+[[components.invariants]]
+id = "tui-only-images"
+statement = "Previews use custom entries and never send model-context messages or image bytes to Pi sessions."
+evidence = ["extensions/index.ts", "src/transcript-entry.ts", "tests/inline-images.test.ts"]
+validation_checks = ["check"]
+[[components.invariants]]
+id = "owned-kitty-cleanup"
+statement = "Cleanup targets only preview IDs allocated by this runtime; global Kitty deletion is never used."
+evidence = ["src/runtime.ts", "src/kitty-placeholder.ts", "tests/inline-images.test.ts"]
+validation_checks = ["verify"]

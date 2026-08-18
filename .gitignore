@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+artifacts/e2e/*.log
+*.tgz
+.DS_Store
+
+.harness-local/

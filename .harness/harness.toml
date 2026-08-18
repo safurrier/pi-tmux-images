@@ -1,0 +1,8 @@
+version = 1
+default_profile = "pi-inline-images-root"
+profiles_dir = "profiles"
+[[targets]]
+name = "pi-inline-images"
+path = ".."
+profile = "pi-inline-images-root"
+system_map = "system.toml"

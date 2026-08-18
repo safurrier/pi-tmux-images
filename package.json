@@ -1,0 +1,51 @@
+{
+	"name": "pi-inline-images",
+	"version": "0.1.0",
+	"description": "TUI-only local image previews for Pi",
+	"license": "MIT",
+	"keywords": [
+		"pi-package",
+		"pi",
+		"pi-extension",
+		"images"
+	],
+	"pi": {
+		"extensions": [
+			"./extensions/index.ts"
+		]
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "^0.84.2",
+		"@earendil-works/pi-tui": "^0.84.2"
+	},
+	"dependencies": {
+		"sharp": "^0.34.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.16",
+		"@earendil-works/pi-coding-agent": "0.84.2",
+		"@earendil-works/pi-tui": "0.84.2",
+		"@types/node": "^24.0.0",
+		"tsx": "^4.22.3",
+		"typescript": "^5.9.0"
+	},
+	"files": [
+		"extensions",
+		"src",
+		"README.md",
+		"LICENSE",
+		"NOTICE",
+		"CHANGELOG.md"
+	],
+	"scripts": {
+		"fmt": "biome check --write .",
+		"fmt:check": "biome check .",
+		"lint": "biome lint .",
+		"typecheck": "tsc --noEmit",
+		"test": "node --test --import tsx tests/*.test.ts",
+		"test:e2e": "node tests/e2e/package-smoke.mjs && node tests/e2e/smoke.mjs",
+		"build": "npm pack --dry-run",
+		"check": "npm run fmt:check && npm run lint && npm run typecheck && npm test && npm run build",
+		"verify": "npm run check && npm run test:e2e"
+	}
+}
