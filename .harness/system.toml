@@ -1,6 +1,6 @@
 version = 1
 [system]
-name = "pi-inline-images"
+name = "pi-tmux-images"
 summary = "TUI-only Pi custom-entry image-preview package."
 [[components]]
 id = "extension-runtime"
@@ -11,10 +11,21 @@ validation_checks = ["check", "verify"]
 [[components.invariants]]
 id = "tui-only-images"
 statement = "Previews use custom entries and never send model-context messages or image bytes to Pi sessions."
-evidence = ["extensions/index.ts", "src/transcript-entry.ts", "tests/inline-images.test.ts"]
+evidence = ["extensions/index.ts", "src/transcript-entry.ts", "tests/tmux-images.test.ts"]
 validation_checks = ["check"]
 [[components.invariants]]
 id = "owned-kitty-cleanup"
 statement = "Cleanup targets only preview IDs allocated by this runtime; global Kitty deletion is never used."
-evidence = ["src/runtime.ts", "src/kitty-placeholder.ts", "tests/inline-images.test.ts"]
+evidence = ["src/runtime.ts", "src/kitty-placeholder.ts", "tests/tmux-images.test.ts"]
 validation_checks = ["verify"]
+[[components]]
+id = "release-package"
+title = "Published package, release, and public documentation"
+kind = "release-package"
+paths = [".github/**", "RELEASING.md", "README.md", "assets/**", "scripts/**", "package.json", "package-lock.json", "tests/release-contract.test.ts", "tests/e2e/package-smoke.mjs"]
+validation_checks = ["check", "verify"]
+[[components.invariants]]
+id = "public-package-contract"
+statement = "The packed package contains its documented fixture generator and release automation publishes only stable, provenance-enabled releases."
+evidence = ["package.json", "scripts/generate-demo-fixture.mjs", ".github/workflows/publish.yml", "tests/release-contract.test.ts", "tests/e2e/package-smoke.mjs"]
+validation_checks = ["check", "verify"]

@@ -1,0 +1,37 @@
+name: Publish npm package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.release.tag_name, 'v') && github.event.release.prerelease == false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Verify release commit is on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - name: Verify release tag matches package version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          test "v${version}" = "${{ github.event.release.tag_name }}"
+      - name: Use npm with trusted publishing support
+        run: |
+          npm install -g npm@12.0.2
+          npm --version
+      - run: npm ci
+      - run: npm run verify
+      - run: npm publish --access public --provenance

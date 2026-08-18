@@ -10,9 +10,9 @@ const pi = process.env.PI_BIN ?? join(root, "node_modules", ".bin", "pi");
 const tmux = spawnSync("tmux", ["-V"], { encoding: "utf8" });
 assert.equal(tmux.status, 0, "tmux is required for the real raw-terminal e2e smoke");
 assert.equal(spawnSync(pi, ["--version"], { encoding: "utf8" }).error, undefined, "Pi executable must be available");
-const temp = mkdtempSync(join(tmpdir(), "pi-inline-images-e2e-"));
-const session = `pi-inline-images-${process.pid}-${Date.now()}`;
-const socket = `pi-inline-images-${process.pid}-${Date.now()}`;
+const temp = mkdtempSync(join(tmpdir(), "pi-tmux-images-e2e-"));
+const session = `pi-tmux-images-${process.pid}-${Date.now()}`;
+const socket = `pi-tmux-images-${process.pid}-${Date.now()}`;
 const config = join(temp, "tmux.conf");
 const raw = join(temp, "raw-pane.bin");
 const fixture = join(temp, "fixture.png");
@@ -61,6 +61,8 @@ try {
 	]);
 	run(["pipe-pane", "-o", "-t", session, `cat >> ${raw}`]);
 	waitFor((output) => output.length > 0, "Pi readiness");
+	// Pi begins painting before its input handler is ready; avoid racing the first command.
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_000);
 	run(["send-keys", "-t", session, `/image ${fixture}`, "Enter"]);
 	waitFor(
 		(output) => /a=t/.test(output) && /U=1/.test(output) && output.includes("􎻮"),

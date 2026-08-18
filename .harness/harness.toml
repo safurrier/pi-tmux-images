@@ -1,8 +1,8 @@
 version = 1
-default_profile = "pi-inline-images-root"
+default_profile = "pi-tmux-images-root"
 profiles_dir = "profiles"
 [[targets]]
-name = "pi-inline-images"
+name = "pi-tmux-images"
 path = ".."
-profile = "pi-inline-images-root"
+profile = "pi-tmux-images-root"
 system_map = "system.toml"

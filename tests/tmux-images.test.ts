@@ -51,7 +51,7 @@ test("geometry honors available cells and capability matrix is conservative", ()
 	setCapabilities({ images: null, trueColor: true, hyperlinks: false });
 });
 test("loader normalizes real PNG, JPEG, and WebP fixtures and honors JPEG orientation", async (t) => {
-	const dir = await mkdtemp(join(tmpdir(), "pi-inline-images-"));
+	const dir = await mkdtemp(join(tmpdir(), "pi-tmux-images-"));
 	t.after(() => rm(dir, { recursive: true, force: true }));
 	const fixtures = [
 		[
@@ -263,18 +263,18 @@ test("extension lifecycle is TUI-only, safely handles malformed entries, limits 
 	assert.ok(tree);
 	await tree({}, ctx);
 	assert.match(writes.join(""), /a=d,d=I,i=500/);
-	const renderer = renderers.get("pi-inline-images.preview");
+	const renderer = renderers.get("pi-tmux-images.preview");
 	assert.ok(renderer);
 	assert.equal(renderer({ data: { nope: true } }).render()[0], "[image] Invalid saved preview entry.");
 	await image.handler("clear", ctx);
 	const clear = entries.at(-1);
 	assert.ok(clear);
-	assert.equal(clear.customType, "pi-inline-images.clear");
+	assert.equal(clear.customType, "pi-tmux-images.clear");
 	entries.length = 0;
 	for (let i = 0; i < 16; i++)
 		entries.push({
 			type: "custom",
-			customType: "pi-inline-images.preview",
+			customType: "pi-tmux-images.preview",
 			data: {
 				path: `p${i}`,
 				hash,

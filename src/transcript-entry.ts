@@ -1,5 +1,5 @@
-export const ENTRY_TYPE = "pi-inline-images.preview";
-export const CLEAR_TYPE = "pi-inline-images.clear";
+export const ENTRY_TYPE = "pi-tmux-images.preview";
+export const CLEAR_TYPE = "pi-tmux-images.clear";
 export interface PreviewEntry {
 	path: string;
 	hash: string;

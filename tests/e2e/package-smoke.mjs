@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const root = process.cwd();
-const temp = mkdtempSync(join(tmpdir(), "pi-inline-images-package-"));
+const temp = mkdtempSync(join(tmpdir(), "pi-tmux-images-package-"));
 let packageFile;
 try {
 	const tarball = execFileSync("npm", ["pack", "--json"], { cwd: root, encoding: "utf8" });
 	const [{ filename }] = JSON.parse(tarball);
+	assert.equal(filename, "pi-tmux-images-0.1.0.tgz", "tarball must use the public package name");
 	packageFile = join(root, filename);
 	execFileSync("npm", ["init", "-y"], { cwd: temp, stdio: "ignore" });
 	execFileSync(
@@ -25,13 +26,17 @@ try {
 		mkdirSync(join(destination, ".."), { recursive: true });
 		symlinkSync(join(root, "node_modules", name), destination, "junction");
 	}
-	const installed = join(temp, "node_modules", "pi-inline-images");
+	const installed = join(temp, "node_modules", "pi-tmux-images");
 	const manifest = JSON.parse(readFileSync(join(installed, "package.json"), "utf8"));
 	assert.deepEqual(manifest.peerDependencies, {
-		"@earendil-works/pi-coding-agent": "^0.84.2",
-		"@earendil-works/pi-tui": "^0.84.2",
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*",
 	});
 	assert.ok(lstatSync(installed).isDirectory(), "packed package must be installed");
+	assert.ok(
+		existsSync(join(installed, "scripts", "generate-demo-fixture.mjs")),
+		"packed package must include its documented fixture generator",
+	);
 	const extension = join(installed, "extensions", "index.ts");
 	const pi = process.env.PI_BIN ?? join(root, "node_modules", ".bin", "pi");
 	const result = spawnSync(

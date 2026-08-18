@@ -1,19 +1,84 @@
-# pi-inline-images
+# pi-tmux-images
 
-A local Pi package which renders a selected local PNG, JPEG, or WebP in the Pi TUI without adding it to model context.
+`pi-tmux-images` renders local images in the Pi TUI when Pi's normal image rendering is disabled inside tmux. It keeps the preview in the terminal UI; it does not attach an image or its bytes to model context.
 
-## First use
+![Ghostty and tmux rendering the pi-tmux-images demo fixture](assets/demo.png)
+
+The screenshot is a real Ghostty + tmux render of the original, reproducible `assets/demo-fixture.png` using Kitty Unicode placeholders.
+
+## Quick start
+
+Install from npm:
 
 ```sh
-pi install /absolute/path/to/pi-inline-images
-# restart Pi, then
-/image /tmp/example.png
+pi install npm:pi-tmux-images
+pi
 ```
 
-`/image clear` clears this package's active previews. The session stores only path, source hash, original MIME, dimensions, and a durable logical ID; normalized PNG bytes and random terminal image IDs remain process-local. Changed or missing files render a readable notice.
+Until the first npm release, install the verified GitHub `main` branch instead:
 
-Kitty placeholders are used only under tmux when the outer terminal supports Kitty graphics and tmux has `allow-passthrough on`; GNU Screen and tmux without passthrough show readable text. Other supported terminals use Pi's Image component. Configure tmux with `set -g allow-passthrough on` before starting Pi. Inputs are limited to 20 MB and 32 decoded megapixels. At most 16 previews may be active; clear before adding another.
+```sh
+pi install git:github.com/safurrier/pi-tmux-images@main
+pi
+```
+
+From a local checkout:
+
+```sh
+cd /path/to/pi-tmux-images
+pi -e .
+```
+
+Before starting Pi inside tmux, enable passthrough in `~/.tmux.conf` and start a new tmux server/session:
+
+```tmux
+set -g allow-passthrough on
+```
+
+Then add and clear a preview:
+
+```text
+/image /absolute/path/to/image.png
+/image clear
+```
+
+## Rendering and compatibility
+
+| Environment | Result |
+| --- | --- |
+| Ghostty in tmux with `allow-passthrough on` | Kitty upload plus Unicode placeholders, so tmux owns placement. |
+| Kitty outside tmux | Pi's image component. |
+| Other image-capable terminals outside tmux (including WezTerm when Pi exposes an image protocol) | Pi's image component. |
+| tmux without passthrough, GNU Screen, or no image protocol | A readable text notice; no image is sent. |
+
+PNG, JPEG, and WebP inputs are supported. Images are normalized to PNG for terminal transport. A preview is limited to 20 MB of source data and 32 decoded megapixels; a session keeps at most 16 active previews. The validated baseline is Pi 0.84.2 on Node >=22.19.0; bundled Pi core peers intentionally use `*` so compatible later Pi releases are not artificially excluded.
+
+## Privacy and session behavior
+
+`/image` creates a Pi custom transcript entry, not a chat message. The model and saved session context receive neither the source file nor normalized PNG bytes. Session data contains the path, source hash, original MIME type, dimensions, and a durable logical ID. Normalized PNG bytes are transmitted through tmux and the terminal to render a preview, so they may appear in terminal logs; process memory owns the cached bytes and terminal image IDs. If a saved source changes or disappears, Pi shows a readable notice instead of reusing it.
+
+## Limits and troubleshooting
+
+- If tmux shows text instead of an image, add `set -g allow-passthrough on`, then restart tmux and Pi. The setting must apply to the server running Pi.
+- `/image clear` removes this package's active previews and deletes only terminal IDs allocated by this runtime.
+- On pane resize, the extension replaces its Kitty virtual placement for the new cell geometry. Resize once after adding an image to confirm placement follows the pane; clear it if a terminal has retained stale pixels.
+- GNU Screen is intentionally a text fallback. The extension does not try to tunnel Kitty graphics through it.
+- Use an absolute path when the working directory is not obvious. Unsupported, unreadable, oversized, or invalid images report an error in Pi.
+
+## How it works
+
+In the supported tmux path, the extension uploads a normalized image through Kitty graphics, creates a virtual placement, and renders Kitty Unicode placeholder cells in Pi's custom entry. This gives tmux the text grid it needs to move and clear the preview safely. Outside tmux, it uses Pi's native image component when available.
+
+## License and security
+
+This project is licensed under [MIT](LICENSE). Pi packages run with the permissions of the user process, so install packages only from sources you trust. The model/session isolation above does not prevent terminals, tmux, or terminal logging from receiving preview bytes.
 
 ## Development
 
-Run `mise run check` for static/unit and package-boundary validation. `mise run verify` additionally smoke-tests the packed package by loading it offline and running `/image clear`, then launches Pi in an isolated tmux session (explicitly configured with `allow-passthrough on`) and captures raw pane bytes while exercising `/image` and `/image clear`; it proves Kitty upload, virtual placement, placeholder, and owned-ID cleanup sequences, not pixel rendering. Visual Ghostty+tmux rendering remains a manual acceptance check: start Pi in tmux, run `/image path.png`, resize the pane, then `/image clear`; confirm the image, resize geometry, and disappearance.
+```sh
+mise run setup
+mise run check
+mise run verify
+```
+
+`mise run check` runs formatting, linting, TypeScript, unit/release-contract tests, and an `npm pack --dry-run` boundary check. `mise run verify` additionally installs the packed tarball offline and runs the isolated tmux raw-terminal smoke. The smoke proves upload, virtual placement, placeholder, and owned-ID cleanup sequences; it does not prove pixels. For the required visual Ghostty + tmux capture, follow [assets/README.md](assets/README.md).

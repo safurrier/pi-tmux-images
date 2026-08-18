@@ -1,22 +1,39 @@
 {
-	"name": "pi-inline-images",
+	"name": "pi-tmux-images",
 	"version": "0.1.0",
-	"description": "TUI-only local image previews for Pi",
+	"description": "Tmux-safe, TUI-only local image previews for Pi",
 	"license": "MIT",
+	"author": "Alex Furrier",
+	"homepage": "https://github.com/safurrier/pi-tmux-images#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/safurrier/pi-tmux-images.git"
+	},
+	"bugs": {
+		"url": "https://github.com/safurrier/pi-tmux-images/issues"
+	},
 	"keywords": [
 		"pi-package",
 		"pi",
 		"pi-extension",
-		"images"
+		"image-preview",
+		"tmux",
+		"ghostty",
+		"kitty",
+		"wezterm"
 	],
+	"engines": {
+		"node": ">=22.19.0"
+	},
 	"pi": {
 		"extensions": [
 			"./extensions/index.ts"
-		]
+		],
+		"image": "https://raw.githubusercontent.com/safurrier/pi-tmux-images/main/assets/demo.png"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": "^0.84.2",
-		"@earendil-works/pi-tui": "^0.84.2"
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
 		"sharp": "^0.34.5"
@@ -32,10 +49,15 @@
 	"files": [
 		"extensions",
 		"src",
+		"assets/demo.png",
+		"assets/demo-fixture.png",
+		"assets/README.md",
+		"scripts/generate-demo-fixture.mjs",
 		"README.md",
 		"LICENSE",
 		"NOTICE",
-		"CHANGELOG.md"
+		"CHANGELOG.md",
+		"RELEASING.md"
 	],
 	"scripts": {
 		"fmt": "biome check --write .",
@@ -46,6 +68,7 @@
 		"test:e2e": "node tests/e2e/package-smoke.mjs && node tests/e2e/smoke.mjs",
 		"build": "npm pack --dry-run",
 		"check": "npm run fmt:check && npm run lint && npm run typecheck && npm test && npm run build",
-		"verify": "npm run check && npm run test:e2e"
+		"verify": "npm run check && npm run test:e2e",
+		"generate:demo-fixture": "node scripts/generate-demo-fixture.mjs"
 	}
 }
