@@ -4,7 +4,7 @@
 
 ![Ghostty and tmux rendering the pi-tmux-images demo fixture](assets/demo.png)
 
-The screenshot is a real Ghostty + tmux render of the original, reproducible `assets/demo-fixture.png` using Kitty Unicode placeholders.
+The screenshot is a real Ghostty + tmux render of the checked-in `assets/demo-fixture.jpg` using Kitty Unicode placeholders.
 
 ## Quick start
 

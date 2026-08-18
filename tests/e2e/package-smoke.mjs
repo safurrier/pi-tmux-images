@@ -33,10 +33,8 @@ try {
 		"@earendil-works/pi-tui": "*",
 	});
 	assert.ok(lstatSync(installed).isDirectory(), "packed package must be installed");
-	assert.ok(
-		existsSync(join(installed, "scripts", "generate-demo-fixture.mjs")),
-		"packed package must include its documented fixture generator",
-	);
+	assert.ok(existsSync(join(installed, "assets", "demo-fixture.jpg")), "packed package must include the demo fixture");
+	assert.ok(existsSync(join(installed, "assets", "demo.png")), "packed package must include the rendered demo");
 	const extension = join(installed, "extensions", "index.ts");
 	const pi = process.env.PI_BIN ?? join(root, "node_modules", ".bin", "pi");
 	const result = spawnSync(

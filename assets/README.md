@@ -1,21 +1,25 @@
 # Release demo capture
 
-`demo-fixture.png` is a deterministic, original geometric microphone-and-card graphic with no third-party art, video frame, likeness, or lyrics. Regenerate it with:
+`demo-fixture.jpg` is the checked-in rickroll image used for the public demo.
 
-```sh
-npm run generate:demo-fixture
+Source URL:
+
+```text
+https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSa1hkAAQ9mk3SSvcKmRwDr7rdt1VW3VRFEcc6u8N4Pdg&s=10
 ```
 
-It is the input rendered in the checked-in `demo.png`, a real Ghostty + tmux screenshot. Re-capture the static screenshot when rendering behavior or the fixture changes; do not make a GIF.
+Expected SHA-256:
 
-1. In Ghostty, start a fresh tmux server after adding this to `~/.tmux.conf`:
+```text
+98a3a36260668dfb991884a54640aacdc99a648886fcf33ffb102e1fa3ea8abe
+```
 
-   ```tmux
-   set -g allow-passthrough on
-   ```
+`demo.png` is a real Ghostty + tmux render of that fixture. Re-capture it when rendering behavior or the fixture changes; do not make a GIF.
 
-2. From this checkout, run `pi -e .` inside that tmux pane.
-3. Run `/image /absolute/path/to/pi-tmux-images/assets/demo-fixture.png`.
-4. Wait for one preview, resize the pane once so placement settles, and keep only the Pi window/pane and the preview in frame. Do not include private prompts, paths, or model output.
-5. Capture the static Ghostty window to `assets/demo.png`. Confirm `/image clear` removes the image before closing.
-6. Replace `assets/demo.png`, then verify the README image and `pi.image` package-gallery URL still point to it.
+1. In Ghostty, start tmux with `set -g allow-passthrough on`.
+2. From the checkout, run `pi -e .` inside tmux.
+3. Run `/image /absolute/path/to/pi-tmux-images/assets/demo-fixture.jpg`.
+4. Resize once and confirm the placement follows the pane.
+5. Capture a clean static image to `assets/demo.png`. Crop out private prompts, paths, branch names, and unrelated terminal content.
+6. Confirm `/image clear` removes the preview.
+7. Verify the README image and `pi.image` package-gallery URL still point to `assets/demo.png`.

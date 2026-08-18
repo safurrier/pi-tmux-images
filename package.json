@@ -50,9 +50,8 @@
 		"extensions",
 		"src",
 		"assets/demo.png",
-		"assets/demo-fixture.png",
+		"assets/demo-fixture.jpg",
 		"assets/README.md",
-		"scripts/generate-demo-fixture.mjs",
 		"README.md",
 		"LICENSE",
 		"NOTICE",
@@ -68,7 +67,6 @@
 		"test:e2e": "node tests/e2e/package-smoke.mjs && node tests/e2e/smoke.mjs",
 		"build": "npm pack --dry-run",
 		"check": "npm run fmt:check && npm run lint && npm run typecheck && npm test && npm run build",
-		"verify": "npm run check && npm run test:e2e",
-		"generate:demo-fixture": "node scripts/generate-demo-fixture.mjs"
+		"verify": "npm run check && npm run test:e2e"
 	}
 }

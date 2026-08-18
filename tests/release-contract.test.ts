@@ -25,27 +25,20 @@ test("public metadata and extension discovery use the canonical package name", (
 	assert.equal(manifest.homepage, "https://github.com/safurrier/pi-tmux-images#readme");
 	assert.equal(manifest.bugs.url, "https://github.com/safurrier/pi-tmux-images/issues");
 	for (const keyword of ["tmux", "ghostty", "kitty", "wezterm"]) assert.ok(manifest.keywords.includes(keyword));
-	for (const file of [
-		"assets/demo.png",
-		"assets/demo-fixture.png",
-		"assets/README.md",
-		"scripts/generate-demo-fixture.mjs",
-	])
+	for (const file of ["assets/demo.png", "assets/demo-fixture.jpg", "assets/README.md"])
 		assert.ok(manifest.files.includes(file), `package files must include ${file}`);
 	assert.ok(existsSync(join(root, "extensions/index.ts")));
 	assert.ok(existsSync(join(root, "assets/demo.png")));
-	assert.ok(existsSync(join(root, "assets/demo-fixture.png")));
+	assert.ok(existsSync(join(root, "assets/demo-fixture.jpg")));
 });
 
-test("fixture regeneration is byte-for-byte deterministic", () => {
-	const fixture = join(root, "assets/demo-fixture.png");
-	const original = readFileSync(fixture);
-	execFileSync(process.execPath, ["scripts/generate-demo-fixture.mjs"], { cwd: root });
-	const regenerated = readFileSync(fixture);
+test("demo fixture matches the approved source image", () => {
+	const fixture = readFileSync(join(root, "assets/demo-fixture.jpg"));
 	assert.equal(
-		createHash("sha256").update(regenerated).digest("hex"),
-		createHash("sha256").update(original).digest("hex"),
+		createHash("sha256").update(fixture).digest("hex"),
+		"98a3a36260668dfb991884a54640aacdc99a648886fcf33ffb102e1fa3ea8abe",
 	);
+	assert.deepEqual([...fixture.subarray(0, 2)], [0xff, 0xd8], "fixture must remain JPEG content");
 });
 
 test("README keeps its install and first-command journey canonical", () => {
