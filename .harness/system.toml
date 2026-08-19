@@ -26,6 +26,17 @@ paths = [".github/**", "RELEASING.md", "README.md", "assets/**", "scripts/**", "
 validation_checks = ["check", "verify"]
 [[components.invariants]]
 id = "public-package-contract"
-statement = "The packed package contains its documented fixture generator and release automation publishes only stable, provenance-enabled releases."
-evidence = ["package.json", "scripts/generate-demo-fixture.mjs", ".github/workflows/publish.yml", "tests/release-contract.test.ts", "tests/e2e/package-smoke.mjs"]
+statement = "The packed package contains its documented fixtures and release automation publishes only stable, provenance-enabled releases."
+evidence = ["package.json", "assets/demo-fixture.jpg", ".github/workflows/publish.yml", "tests/release-contract.test.ts", "tests/e2e/package-smoke.mjs"]
 validation_checks = ["check", "verify"]
+[[components]]
+id = "guarded-release-command"
+title = "Dry-run-by-default future release command"
+kind = "release-tooling"
+paths = ["scripts/release.ts", ".mise/tasks/release", "README.md", "RELEASING.md", "CHANGELOG.md", "tests/release-command.test.ts"]
+validation_checks = ["check", "verify"]
+[[components.invariants]]
+id = "guarded-release-effects"
+statement = "The release command does not mutate by default and requires repository, package, CI, trusted-publishing, and npm guards before release effects."
+evidence = ["scripts/release.ts", "tests/release-command.test.ts", "RELEASING.md"]
+validation_checks = ["check"]

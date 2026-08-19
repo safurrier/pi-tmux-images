@@ -2,7 +2,7 @@ name = "pi-tmux-images-root"
 title = "Pi tmux images"
 target_hint = "Use --target . from this repository."
 summary = "Local Pi image-preview extension and release-package validation profile."
-instructions = "Run focused Node tests while editing, then mise run check, mise run verify, and HK config validation."
+instructions = "Run focused Node tests while editing, then mise run check, mise run verify, and HK config validation. Release-tooling changes must also cover the dry-run/fail-closed contract."
 [[checks]]
 name = "check"
 purpose = "Type, lint, unit, release-contract, and package-boundary gate."
