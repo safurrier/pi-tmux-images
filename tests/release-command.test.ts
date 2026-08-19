@@ -38,6 +38,8 @@ test("execute path performs guarded phases with fake command execution only", as
 	const calls: string[] = [];
 	let committed = false;
 	let published = false;
+	let publishLookups = 0;
+	let sleeps = 0;
 	const run: CommandRunner = (executable, args, options) => {
 		calls.push([executable, ...args].join(" "));
 		const ok = (stdout = "") => ({ status: 0, stdout, stderr: "" });
@@ -73,8 +75,9 @@ test("execute path performs guarded phases with fake command execution only", as
 		if (executable === "npm" && args[0] === "view" && args[1] === "pi-tmux-images") return ok('"0.1.0"');
 		if (executable === "npm" && args[0] === "dist-tag") return ok(`latest: ${target}\n`);
 		if (executable === "gh" && args[0] === "run" && args[1] === "list") {
-			return args.includes("ci.yml")
-				? ok('[{"status":"completed","conclusion":"success"}]')
+			if (args.includes("ci.yml")) return ok('[{"status":"completed","conclusion":"success"}]');
+			return publishLookups++ < 2
+				? ok("[]")
 				: ok('[{"databaseId":42,"headSha":"release-sha","status":"completed","conclusion":"success"}]');
 		}
 		if (executable === "gh" && args[0] === "run" && args[1] === "watch") {
@@ -86,12 +89,43 @@ test("execute path performs guarded phases with fake command execution only", as
 		return ok();
 	};
 
-	executeRelease(target, { root, run, write() {} });
+	executeRelease(target, {
+		root,
+		run,
+		write() {},
+		sleep() {
+			sleeps++;
+		},
+	});
 	assert.ok(calls.includes("mise run verify"));
 	assert.ok(calls.includes(`git tag -a v${target} -m Release v${target}`));
 	assert.ok(calls.includes(`gh release create v${target} --title v${target} --generate-notes`));
 	assert.ok(calls.some((call) => call.includes(`pi install npm:pi-tmux-images@${target} --local`)));
+	assert.equal(sleeps, 2, "waits for GitHub to expose the release workflow before watching it");
 	assert.equal(JSON.parse(await readFile(join(root, "package.json"), "utf8")).version, target);
+});
+
+test("execute rejects token-based publish workflows before mutating package versions", async (t) => {
+	const root = await fixture();
+	t.after(() => rm(root, { recursive: true, force: true }));
+	await writeFile(
+		join(root, ".github/workflows/publish.yml"),
+		"on:\n  release:\n    types: [published]\nenv:\n  NODE_AUTH_TOKEN: token-value\npermissions:\n  id-token: write\nsteps:\n  - run: git merge-base --is-ancestor HEAD origin/main\n  - run: npm publish --access public --provenance\n",
+	);
+	const calls: string[] = [];
+	const run: CommandRunner = (executable, args) => {
+		calls.push([executable, ...args].join(" "));
+		const ok = (stdout = "") => ({ status: 0, stdout, stderr: "" });
+		if (executable === "git" && args.join(" ") === "branch --show-current") return ok("main\n");
+		if (executable === "git" && args[0] === "rev-parse") return ok("base-sha\n");
+		if (executable === "git" && args[0] === "show-ref") return { status: 1, stdout: "", stderr: "" };
+		return ok();
+	};
+	assert.throws(() => executeRelease(target, { root, run }), /publish\.yml must use/u);
+	assert.equal(
+		calls.some((call) => call.startsWith("npm version")),
+		false,
+	);
 });
 
 test("execute fails before mutation when the repository is not clean", async (t) => {

@@ -14,7 +14,7 @@ After a standalone `## 0.1.1` changelog entry has landed, run the guarded extern
 mise run release -- 0.1.1 --execute
 ```
 
-The command fail-closes unless the target is a greater stable version, absent from local/remote tags and npm, the package and lock agree, prior CI passed, local `mise run verify` passes, GitHub authentication is available, and `publish.yml` still uses OIDC provenance publishing without token or OTP credentials. It then makes the release version commit/tag, pushes them, creates the GitHub Release, watches the publish workflow, verifies npm `latest`, version, and attestations, and performs a temporary npm Pi install smoke.
+The command fail-closes unless the target is a greater stable version, absent from local/remote tags and npm, the package and lock agree, prior CI passed, local `mise run verify` passes, GitHub authentication is available, and `publish.yml` still uses OIDC provenance publishing without token or OTP credentials. It then makes the release version commit/tag, pushes them, creates the GitHub Release, polls until the publish workflow is visible, watches it, verifies npm `latest`, version, and attestations, and performs a temporary npm Pi install smoke.
 
 ### Phase recovery
 

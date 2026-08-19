@@ -13,6 +13,8 @@ export type ReleaseOptions = {
 	root?: string;
 	run?: CommandRunner;
 	write?: (line: string) => void;
+	/** Test hook for publish-workflow polling; production waits with `sleep`. */
+	sleep?: (milliseconds: number) => void;
 };
 
 export class ReleaseError extends Error {}
@@ -90,7 +92,9 @@ function assertTrustedPublishing(root: string): void {
 		!/git merge-base --is-ancestor HEAD origin\/main/u.test(workflow) ||
 		!/id-token:\s*write/u.test(workflow) ||
 		!/npm publish --access public --provenance/u.test(workflow) ||
-		/\bNPM_TOKEN\b|--otp(?:=|\s)/u.test(workflow)
+		/\b(?:NPM_TOKEN|NODE_AUTH_TOKEN|NPM_CONFIG_[A-Z0-9_]*TOKEN)\b|_authToken|npm\s+config\s+set\s+.*(?:_auth|token)|--otp(?:=|\s)/iu.test(
+			workflow,
+		)
 	)
 		throw new ReleaseError(
 			"publish.yml must use npm trusted publishing with provenance and must not use NPM_TOKEN or OTP credentials.",
@@ -184,32 +188,37 @@ function verifyRelease(root: string, run: CommandRunner): void {
 	required(run, root, "mise", ["run", "verify"], "Local verification");
 }
 
-function waitForPublish(run: CommandRunner, root: string, sha: string): void {
-	const result = required(
-		run,
-		root,
-		"gh",
-		[
-			"run",
-			"list",
-			"--workflow",
-			"publish.yml",
-			"--event",
-			"release",
-			"--limit",
-			"20",
-			"--json",
-			"databaseId,headSha,status,conclusion",
-		],
-		"Publish workflow lookup",
-	);
-	const runs = parseJson<Array<{ databaseId?: number; headSha?: string }>>(result.stdout, "Publish workflow lookup");
-	const publishRun = runs.find((entry) => entry.headSha === sha && entry.databaseId);
-	if (!publishRun?.databaseId)
-		throw new ReleaseError(
-			"GitHub Release exists but its publish workflow is not visible yet; wait, then resume from workflow watch.",
+function waitForPublish(run: CommandRunner, root: string, sha: string, sleep: (milliseconds: number) => void): void {
+	for (let attempt = 0; attempt < 30; attempt++) {
+		const result = required(
+			run,
+			root,
+			"gh",
+			[
+				"run",
+				"list",
+				"--workflow",
+				"publish.yml",
+				"--event",
+				"release",
+				"--limit",
+				"20",
+				"--json",
+				"databaseId,headSha,status,conclusion",
+			],
+			"Publish workflow lookup",
 		);
-	required(run, root, "gh", ["run", "watch", String(publishRun.databaseId), "--exit-status"], "Publish workflow");
+		const runs = parseJson<Array<{ databaseId?: number; headSha?: string }>>(result.stdout, "Publish workflow lookup");
+		const publishRun = runs.find((entry) => entry.headSha === sha && entry.databaseId);
+		if (publishRun?.databaseId) {
+			required(run, root, "gh", ["run", "watch", String(publishRun.databaseId), "--exit-status"], "Publish workflow");
+			return;
+		}
+		if (attempt < 29) sleep(2_000);
+	}
+	throw new ReleaseError(
+		"GitHub Release exists but its publish workflow was not visible after 60 seconds; follow phase recovery.",
+	);
 }
 
 function verifyPublishedPackage(run: CommandRunner, root: string, target: string): void {
@@ -279,6 +288,10 @@ export function executeRelease(target: string, options: ReleaseOptions = {}): vo
 	stableVersion(target);
 	const root = options.root ?? process.cwd();
 	const run = options.run ?? command;
+	const sleep =
+		options.sleep ??
+		((milliseconds: number) =>
+			required(command, root, "sleep", [String(milliseconds / 1_000)], "Publish workflow polling wait"));
 	assertInitialPreflight(run, root, target);
 	required(run, root, "npm", ["version", target, "--no-git-tag-version", "--ignore-scripts"], "Package version update");
 	if (manifest(root).version !== target)
@@ -306,7 +319,7 @@ export function executeRelease(target: string, options: ReleaseOptions = {}): vo
 			"Create GitHub Release",
 		);
 	}
-	waitForPublish(run, root, releaseSha);
+	waitForPublish(run, root, releaseSha, sleep);
 	verifyPublishedPackage(run, root, target);
 	smokeInstall(run, target);
 	(options.write ?? console.log)(`Release ${target} completed.`);
