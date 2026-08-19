@@ -9,7 +9,10 @@ const temp = mkdtempSync(join(tmpdir(), "pi-tmux-images-package-"));
 let packageFile;
 try {
 	const tarball = execFileSync("npm", ["pack", "--json"], { cwd: root, encoding: "utf8" });
-	const [{ filename }] = JSON.parse(tarball);
+	const packResult = JSON.parse(tarball);
+	const metadata = Array.isArray(packResult) ? packResult[0] : Object.values(packResult)[0];
+	assert.ok(metadata && typeof metadata === "object", "npm pack must return package metadata");
+	const { filename } = metadata;
 	assert.equal(filename, "pi-tmux-images-0.1.0.tgz", "tarball must use the public package name");
 	packageFile = join(root, filename);
 	execFileSync("npm", ["init", "-y"], { cwd: temp, stdio: "ignore" });
@@ -51,6 +54,6 @@ try {
 	assert.doesNotMatch(`${result.stdout}${result.stderr}`, /Failed to load extension|Cannot find module/u);
 	console.log("packed package peer contract installed and Pi loaded its extension via /image clear.");
 } finally {
-	rmSync(packageFile, { force: true });
+	if (packageFile) rmSync(packageFile, { force: true });
 	rmSync(temp, { recursive: true, force: true });
 }
