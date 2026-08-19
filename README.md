@@ -15,7 +15,7 @@ pi install npm:pi-tmux-images
 pi
 ```
 
-Until the first npm release, install the verified GitHub `main` branch instead:
+To install the verified GitHub `main` branch instead:
 
 ```sh
 pi install git:github.com/safurrier/pi-tmux-images@main
