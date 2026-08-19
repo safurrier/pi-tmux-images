@@ -1,5 +1,27 @@
 # Releasing pi-tmux-images
 
+## Subsequent stable releases
+
+The repository-owned command plans by default and performs no command execution or mutation:
+
+```sh
+mise run release -- 0.1.1
+```
+
+After a standalone `## 0.1.1` changelog entry has landed, run the guarded external-effect path only from clean `main` at `origin/main`:
+
+```sh
+mise run release -- 0.1.1 --execute
+```
+
+The command fail-closes unless the target is a greater stable version, absent from local/remote tags and npm, the package and lock agree, prior CI passed, local `mise run verify` passes, GitHub authentication is available, and `publish.yml` still uses OIDC provenance publishing without token or OTP credentials. It then makes the release version commit/tag, pushes them, creates the GitHub Release, watches the publish workflow, verifies npm `latest`, version, and attestations, and performs a temporary npm Pi install smoke.
+
+### Phase recovery
+
+Do not blindly rerun `--execute` after an external-effect failure: it intentionally rejects an existing tag or target version. Identify the completed phase first with `git log`, `git ls-remote --tags origin`, `gh release view v<version>`, and `gh run list --workflow publish.yml`. Then complete only the missing phase (push an already-created tag, create a missing GitHub Release, or watch/verify the existing publish run). Preserve the matching release commit/tag; do not recreate or retarget them. Record the recovery outcome in the changelog or PR notes before the next release.
+
+This command never accepts, stores, or uses npm tokens or OTPs. It is not a first-package bootstrap tool; use the documented bootstrap process below (or the generic Dots release skill) for new package ownership.
+
 ## Before the first release
 
 1. Run `mise run verify` and inspect the real `assets/demo.png` described in `assets/README.md`. Re-capture it if rendering behavior or the fixture changed.

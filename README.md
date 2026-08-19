@@ -82,3 +82,19 @@ mise run verify
 ```
 
 `mise run check` runs formatting, linting, TypeScript, unit/release-contract tests, and an `npm pack --dry-run` boundary check. `mise run verify` additionally installs the packed tarball in an isolated temporary project and runs the isolated tmux raw-terminal smoke. The smoke proves upload, virtual placement, placeholder, and owned-ID cleanup sequences; it does not prove pixels. For the required visual Ghostty + tmux capture, follow [assets/README.md](assets/README.md).
+
+### Future releases
+
+Plan a stable release without changing files or contacting external services:
+
+```sh
+mise run release -- 0.1.1
+```
+
+Only run the external-effect path after the target changelog entry is already on a clean, current `main`:
+
+```sh
+mise run release -- 0.1.1 --execute
+```
+
+The guarded command refuses unsafe repository state, duplicate tags/versions, missing successful CI, or an untrusted publish workflow. It updates only package versions, validates, commits/tags/pushes, creates the GitHub Release, waits for OIDC publishing, and verifies npm plus a temporary Pi install. It never accepts or stores an npm token or OTP. First-package bootstrap is deliberately excluded; see [RELEASING.md](RELEASING.md).

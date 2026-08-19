@@ -67,6 +67,7 @@
 		"test:e2e": "node tests/e2e/package-smoke.mjs && node tests/e2e/smoke.mjs",
 		"build": "npm pack --dry-run",
 		"check": "npm run fmt:check && npm run lint && npm run typecheck && npm test && npm run build",
-		"verify": "npm run check && npm run test:e2e"
+		"verify": "npm run check && npm run test:e2e",
+		"release": "tsx scripts/release.ts"
 	}
 }

@@ -74,6 +74,20 @@ test("release workflow only publishes stable releases with pinned inputs", () =>
 	assert.match(read("RELEASING.md"), /npm logout/u);
 });
 
+test("guarded release command plans by default and has repository-owned coverage", () => {
+	const manifest = JSON.parse(read("package.json"));
+	assert.equal(manifest.scripts.release, "tsx scripts/release.ts");
+	assert.ok(existsSync(join(root, "scripts/release.ts")));
+	assert.ok(existsSync(join(root, ".mise/tasks/release")));
+	for (const text of [read("README.md"), read("RELEASING.md")]) {
+		assert.match(text, /mise run release -- 0\.1\.1/u);
+		assert.match(text, /--execute/u);
+		assert.match(text, /OTP|token/u);
+	}
+	assert.match(read("scripts/release.ts"), /dry run; no commands will be run/u);
+	assert.match(read(".harness/system.toml"), /guarded-release-command/u);
+});
+
 test("Harness target, profile, and system map join on the canonical name", () => {
 	const harness = read(".harness/harness.toml");
 	const profile = read(".harness/profiles/pi-tmux-images-root.toml");

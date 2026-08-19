@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Plan or execute a guarded stable npm release"
+set -euo pipefail
+npm run release -- "$@"
