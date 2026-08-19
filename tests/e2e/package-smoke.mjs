@@ -13,7 +13,12 @@ try {
 	const metadata = Array.isArray(packResult) ? packResult[0] : Object.values(packResult)[0];
 	assert.ok(metadata && typeof metadata === "object", "npm pack must return package metadata");
 	const { filename } = metadata;
-	assert.equal(filename, "pi-tmux-images-0.1.0.tgz", "tarball must use the public package name");
+	const sourceManifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+	assert.equal(
+		filename,
+		`${sourceManifest.name}-${sourceManifest.version}.tgz`,
+		"tarball must match the package version",
+	);
 	packageFile = join(root, filename);
 	execFileSync("npm", ["init", "-y"], { cwd: temp, stdio: "ignore" });
 	execFileSync(
