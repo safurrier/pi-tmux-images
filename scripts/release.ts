@@ -259,6 +259,7 @@ function smokeInstall(run: CommandRunner, target: string): void {
 				"--yes",
 				"--package",
 				"@earendil-works/pi-coding-agent",
+				"--",
 				"pi",
 				"install",
 				`npm:${PACKAGE}@${target}`,

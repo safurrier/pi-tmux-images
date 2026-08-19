@@ -100,7 +100,11 @@ test("execute path performs guarded phases with fake command execution only", as
 	assert.ok(calls.includes("mise run verify"));
 	assert.ok(calls.includes(`git tag -a v${target} -m Release v${target}`));
 	assert.ok(calls.includes(`gh release create v${target} --title v${target} --generate-notes`));
-	assert.ok(calls.some((call) => call.includes(`pi install npm:pi-tmux-images@${target} --local`)));
+	assert.ok(
+		calls.includes(
+			`npm exec --yes --package @earendil-works/pi-coding-agent -- pi install npm:pi-tmux-images@${target} --local`,
+		),
+	);
 	assert.equal(sleeps, 2, "waits for GitHub to expose the release workflow before watching it");
 	assert.equal(JSON.parse(await readFile(join(root, "package.json"), "utf8")).version, target);
 });
