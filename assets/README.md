@@ -14,7 +14,7 @@ Expected SHA-256:
 98a3a36260668dfb991884a54640aacdc99a648886fcf33ffb102e1fa3ea8abe
 ```
 
-`demo.png` is a real Ghostty + tmux render of that fixture. Re-capture it when rendering behavior or the fixture changes; do not make a GIF.
+`demo.png` is a real Ghostty + tmux render of that fixture. Re-capture it when rendering behavior or the fixture changes. Keep the capture static rather than making a GIF.
 
 1. In Ghostty, start tmux with `set -g allow-passthrough on`.
 2. From the checkout, run `pi -e .` inside tmux.
