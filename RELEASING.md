@@ -55,7 +55,7 @@ The first public release still had to come from GitHub Actions with OIDC provena
 
    After this first publication, `npm dist-tag ls` showed `0.0.0-bootstrap.0` under both `bootstrap` and `latest` despite `--tag bootstrap`. Publishing `v0.1.0` later moved `latest` to the stable version.
 3. Added a GitHub Actions trusted publisher in npm package settings with owner `safurrier`, repository `pi-tmux-images`, workflow `publish.yml`, and no environment.
-4. Ran `npm logout`, removed the temporary npm credential, and deleted the disposable checkout. The repository retained no `NPM_TOKEN` secret or token-based publish workflow.
+4. Ran `npm logout`, revoked the temporary npm token in npm, removed the local credential, and deleted the disposable checkout. The repository retained no `NPM_TOKEN` secret or token-based publish workflow.
 
 ## v0.1.0 publication record
 
