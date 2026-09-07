@@ -31,8 +31,9 @@ function required(
 	executable: string,
 	args: string[],
 	description: string,
+	options: CommandOptions = {},
 ): CommandResult {
-	const result = run(executable, args, { cwd });
+	const result = run(executable, args, { ...options, cwd });
 	if (result.status !== 0) {
 		const detail = (result.stderr || result.stdout).trim();
 		throw new ReleaseError(`${description} failed.${detail ? ` ${detail}` : ""}`);
@@ -109,13 +110,17 @@ function parseJson<T>(value: string, description: string): T {
 	}
 }
 
+function isNpmNotFound(result: CommandResult): boolean {
+	return /\bE404\b|404 Not Found|is not in this registry/iu.test(`${result.stderr}\n${result.stdout}`);
+}
+
 function noTargetOnNpm(run: CommandRunner, root: string, target: string): void {
 	const result = run("npm", ["view", `${PACKAGE}@${target}`, "version", "--json"], { cwd: root });
 	if (result.status === 0)
 		throw new ReleaseError(
 			`npm already contains ${PACKAGE}@${target}; choose a new version or use the documented recovery steps.`,
 		);
-	if (!/\bE404\b|404 Not Found|is not in this registry/iu.test(`${result.stderr}\n${result.stdout}`))
+	if (!isNpmNotFound(result))
 		throw new ReleaseError(`Unable to confirm ${PACKAGE}@${target} is absent from npm; refusing to release.`);
 }
 
@@ -221,14 +226,23 @@ function waitForPublish(run: CommandRunner, root: string, sha: string, sleep: (m
 	);
 }
 
-function verifyPublishedPackage(run: CommandRunner, root: string, target: string): void {
-	const version = required(
-		run,
-		root,
-		"npm",
-		["view", `${PACKAGE}@${target}`, "version", "--json"],
-		"Published npm version check",
-	);
+function verifyPublishedPackage(
+	run: CommandRunner,
+	root: string,
+	target: string,
+	sleep: (milliseconds: number) => void,
+): void {
+	let version: CommandResult | undefined;
+	for (let attempt = 0; attempt < 30; attempt++) {
+		version = run("npm", ["view", `${PACKAGE}@${target}`, "version", "--json"], { cwd: root });
+		if (version.status === 0) break;
+		if (!isNpmNotFound(version) || attempt === 29) break;
+		sleep(2_000);
+	}
+	if (version?.status !== 0) {
+		const detail = (version?.stderr || version?.stdout || "").trim();
+		throw new ReleaseError(`Published npm version check failed.${detail ? ` ${detail}` : ""}`);
+	}
 	if (parseJson<string>(version.stdout, "Published npm version check") !== target)
 		throw new ReleaseError(`npm did not report ${PACKAGE}@${target}.`);
 	const tags = required(run, root, "npm", ["dist-tag", "ls", PACKAGE], "npm latest tag check").stdout;
@@ -248,8 +262,13 @@ function verifyPublishedPackage(run: CommandRunner, root: string, target: string
 
 function smokeInstall(run: CommandRunner, target: string): void {
 	const directory = mkdtempSync(join(tmpdir(), "pi-tmux-images-release-smoke-"));
+	const npmEnvironment = { ...process.env };
+	for (const key of Object.keys(npmEnvironment))
+		if (key.toLowerCase() === "npm_config_allow_scripts") delete npmEnvironment[key];
 	try {
-		required(run, directory, "npm", ["init", "-y"], "Temporary smoke project setup");
+		required(run, directory, "npm", ["init", "-y"], "Temporary smoke project setup", {
+			env: npmEnvironment,
+		});
 		required(
 			run,
 			directory,
@@ -266,6 +285,7 @@ function smokeInstall(run: CommandRunner, target: string): void {
 				"--local",
 			],
 			"Temporary npm Pi install smoke",
+			{ env: npmEnvironment },
 		);
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
@@ -321,7 +341,7 @@ export function executeRelease(target: string, options: ReleaseOptions = {}): vo
 		);
 	}
 	waitForPublish(run, root, releaseSha, sleep);
-	verifyPublishedPackage(run, root, target);
+	verifyPublishedPackage(run, root, target, sleep);
 	smokeInstall(run, target);
 	(options.write ?? console.log)(`Release ${target} completed.`);
 }

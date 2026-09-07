@@ -34,11 +34,23 @@ test("dry-run plan is stable and does not execute commands", () => {
 
 test("execute path performs guarded phases with fake command execution only", async (t) => {
 	const root = await fixture();
-	t.after(() => rm(root, { recursive: true, force: true }));
+	const originalLowerAllowScripts = process.env.npm_config_allow_scripts;
+	const originalUpperAllowScripts = process.env.NPM_CONFIG_ALLOW_SCRIPTS;
+	process.env.npm_config_allow_scripts = "true";
+	process.env.NPM_CONFIG_ALLOW_SCRIPTS = "true";
+	t.after(() => {
+		rm(root, { recursive: true, force: true });
+		if (originalLowerAllowScripts === undefined) delete process.env.npm_config_allow_scripts;
+		else process.env.npm_config_allow_scripts = originalLowerAllowScripts;
+		if (originalUpperAllowScripts === undefined) delete process.env.NPM_CONFIG_ALLOW_SCRIPTS;
+		else process.env.NPM_CONFIG_ALLOW_SCRIPTS = originalUpperAllowScripts;
+	});
 	const calls: string[] = [];
 	let committed = false;
 	let published = false;
 	let publishLookups = 0;
+	let publishedVersionLookups = 0;
+	let smokeEnvironmentWasSanitized = false;
 	let sleeps = 0;
 	const run: CommandRunner = (executable, args, options) => {
 		calls.push([executable, ...args].join(" "));
@@ -70,7 +82,15 @@ test("execute path performs guarded phases with fake command execution only", as
 		if (executable === "npm" && args[0] === "view" && args[1] === `pi-tmux-images@${target}`) {
 			if (args[2] === "dist.attestations")
 				return ok('{"provenance":{"predicateType":"https://slsa.dev/provenance/v1"}}');
-			return published ? ok(`"${target}"`) : { status: 1, stdout: "", stderr: "npm error code E404" };
+			return published && publishedVersionLookups++ >= 2
+				? ok(`"${target}"`)
+				: { status: 1, stdout: "", stderr: "npm error code E404" };
+		}
+		if (executable === "npm" && args[0] === "exec") {
+			smokeEnvironmentWasSanitized =
+				options?.env !== undefined &&
+				Object.keys(options.env).every((key) => key.toLowerCase() !== "npm_config_allow_scripts");
+			return ok();
 		}
 		if (executable === "npm" && args[0] === "view" && args[1] === "pi-tmux-images") return ok('"0.1.0"');
 		if (executable === "npm" && args[0] === "dist-tag") return ok(`latest: ${target}\n`);
@@ -105,7 +125,8 @@ test("execute path performs guarded phases with fake command execution only", as
 			`npm exec --yes --package @earendil-works/pi-coding-agent -- pi install npm:pi-tmux-images@${target} --local`,
 		),
 	);
-	assert.equal(sleeps, 2, "waits for GitHub to expose the release workflow before watching it");
+	assert.equal(sleeps, 4, "waits for GitHub and npm to expose the published release");
+	assert.equal(smokeEnvironmentWasSanitized, true, "smoke install must not inherit allow-scripts");
 	assert.equal(JSON.parse(await readFile(join(root, "package.json"), "utf8")).version, target);
 });
 
