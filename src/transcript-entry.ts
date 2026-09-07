@@ -36,7 +36,8 @@ export function isPreview(value: unknown): value is PreviewEntry {
 		x.height > 0 &&
 		x.height <= 100000 &&
 		(origin === undefined ||
-			(typeof origin === "object" &&
+			(origin !== null &&
+				typeof origin === "object" &&
 				Number.isSafeInteger(origin.messageOrdinal) &&
 				origin.messageOrdinal >= 0 &&
 				typeof origin.key === "string" &&
