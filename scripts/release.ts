@@ -232,32 +232,47 @@ function verifyPublishedPackage(
 	target: string,
 	sleep: (milliseconds: number) => void,
 ): void {
-	let version: CommandResult | undefined;
+	let pending = `npm did not report ${PACKAGE}@${target}.`;
 	for (let attempt = 0; attempt < 30; attempt++) {
-		version = run("npm", ["view", `${PACKAGE}@${target}`, "version", "--json"], { cwd: root });
-		if (version.status === 0) break;
-		if (!isNpmNotFound(version) || attempt === 29) break;
-		sleep(2_000);
+		const version = run("npm", ["view", `${PACKAGE}@${target}`, "version", "--json"], { cwd: root });
+		if (version.status !== 0) {
+			if (!isNpmNotFound(version)) {
+				const detail = (version.stderr || version.stdout).trim();
+				throw new ReleaseError(`Published npm version check failed.${detail ? ` ${detail}` : ""}`);
+			}
+			pending = `npm did not report ${PACKAGE}@${target}.`;
+		} else if (parseJson<string>(version.stdout, "Published npm version check") !== target) {
+			throw new ReleaseError(`npm reported the wrong version for ${PACKAGE}@${target}.`);
+		} else {
+			const tags = run("npm", ["dist-tag", "ls", PACKAGE], { cwd: root });
+			if (tags.status !== 0) {
+				if (!isNpmNotFound(tags)) {
+					const detail = (tags.stderr || tags.stdout).trim();
+					throw new ReleaseError(`npm latest tag check failed.${detail ? ` ${detail}` : ""}`);
+				}
+				pending = `npm did not report dist-tags for ${PACKAGE}.`;
+			} else if (!new RegExp(`^latest:\\s*${target}$`, "m").test(tags.stdout)) {
+				pending = `npm latest does not point to ${target}.`;
+			} else {
+				const attestations = run("npm", ["view", `${PACKAGE}@${target}`, "dist.attestations", "--json"], {
+					cwd: root,
+				});
+				if (attestations.status !== 0) {
+					if (!isNpmNotFound(attestations)) {
+						const detail = (attestations.stderr || attestations.stdout).trim();
+						throw new ReleaseError(`npm provenance check failed.${detail ? ` ${detail}` : ""}`);
+					}
+					pending = "npm did not report provenance attestations for the published package.";
+				} else {
+					const parsed = parseJson<unknown>(attestations.stdout, "npm provenance check");
+					if (parsed && /provenance/iu.test(JSON.stringify(parsed))) return;
+					pending = "npm did not report provenance attestations for the published package.";
+				}
+			}
+		}
+		if (attempt < 29) sleep(2_000);
 	}
-	if (version?.status !== 0) {
-		const detail = (version?.stderr || version?.stdout || "").trim();
-		throw new ReleaseError(`Published npm version check failed.${detail ? ` ${detail}` : ""}`);
-	}
-	if (parseJson<string>(version.stdout, "Published npm version check") !== target)
-		throw new ReleaseError(`npm did not report ${PACKAGE}@${target}.`);
-	const tags = required(run, root, "npm", ["dist-tag", "ls", PACKAGE], "npm latest tag check").stdout;
-	if (!new RegExp(`^latest:\\s*${target}$`, "m").test(tags))
-		throw new ReleaseError(`npm latest does not point to ${target}.`);
-	const attestations = required(
-		run,
-		root,
-		"npm",
-		["view", `${PACKAGE}@${target}`, "dist.attestations", "--json"],
-		"npm provenance check",
-	).stdout;
-	const parsed = parseJson<unknown>(attestations, "npm provenance check");
-	if (!parsed || !/provenance/iu.test(JSON.stringify(parsed)))
-		throw new ReleaseError("npm did not report provenance attestations for the published package.");
+	throw new ReleaseError(pending);
 }
 
 function smokeInstall(run: CommandRunner, target: string): void {

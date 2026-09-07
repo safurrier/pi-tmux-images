@@ -50,6 +50,8 @@ test("execute path performs guarded phases with fake command execution only", as
 	let published = false;
 	let publishLookups = 0;
 	let publishedVersionLookups = 0;
+	let tagLookups = 0;
+	let attestationLookups = 0;
 	let smokeEnvironmentWasSanitized = false;
 	let sleeps = 0;
 	const run: CommandRunner = (executable, args, options) => {
@@ -81,7 +83,9 @@ test("execute path performs guarded phases with fake command execution only", as
 		}
 		if (executable === "npm" && args[0] === "view" && args[1] === `pi-tmux-images@${target}`) {
 			if (args[2] === "dist.attestations")
-				return ok('{"provenance":{"predicateType":"https://slsa.dev/provenance/v1"}}');
+				return attestationLookups++ === 0
+					? ok("null")
+					: ok('{"provenance":{"predicateType":"https://slsa.dev/provenance/v1"}}');
 			return published && publishedVersionLookups++ >= 2
 				? ok(`"${target}"`)
 				: { status: 1, stdout: "", stderr: "npm error code E404" };
@@ -93,7 +97,8 @@ test("execute path performs guarded phases with fake command execution only", as
 			return ok();
 		}
 		if (executable === "npm" && args[0] === "view" && args[1] === "pi-tmux-images") return ok('"0.1.0"');
-		if (executable === "npm" && args[0] === "dist-tag") return ok(`latest: ${target}\n`);
+		if (executable === "npm" && args[0] === "dist-tag")
+			return tagLookups++ === 0 ? ok("latest: 0.1.0\n") : ok(`latest: ${target}\n`);
 		if (executable === "gh" && args[0] === "run" && args[1] === "list") {
 			if (args.includes("ci.yml")) return ok('[{"status":"completed","conclusion":"success"}]');
 			return publishLookups++ < 2
@@ -125,7 +130,7 @@ test("execute path performs guarded phases with fake command execution only", as
 			`npm exec --yes --package @earendil-works/pi-coding-agent -- pi install npm:pi-tmux-images@${target} --local`,
 		),
 	);
-	assert.equal(sleeps, 4, "waits for GitHub and npm to expose the published release");
+	assert.equal(sleeps, 6, "waits for GitHub and npm to expose the complete published release");
 	assert.equal(smokeEnvironmentWasSanitized, true, "smoke install must not inherit allow-scripts");
 	assert.equal(JSON.parse(await readFile(join(root, "package.json"), "utf8")).version, target);
 });
