@@ -205,6 +205,18 @@ test("rehydration uses logical identity and malformed/legacy entries are rejecte
 		false,
 	);
 	assert.equal(isPreview({ path: "a", hash, previewId: 1 }), false);
+	assert.equal(
+		isPreview({
+			path: "a",
+			hash,
+			originalMime: "image/png",
+			width: 2,
+			height: 2,
+			logicalId: "logical-id-0000004",
+			origin: null,
+		}),
+		false,
+	);
 });
 test("extension lifecycle is TUI-only, safely handles malformed entries, limits entries, and clears owned IDs on rebuild", async () => {
 	type StoredEntry = { type: "custom"; customType: string; data: PreviewEntry | { marker: true } };
