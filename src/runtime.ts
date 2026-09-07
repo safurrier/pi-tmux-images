@@ -1,13 +1,14 @@
 import { allocateImageId, getCapabilities, getCellDimensions } from "@earendil-works/pi-tui";
 import { type Environment, isTmux, type RenderMode, renderMode, type TmuxProbe } from "./capabilities.ts";
 import { deleteImage, deletePlacement, grid, placement, type Sink, upload } from "./kitty-placeholder.ts";
-import { type FileOps, type LoadedImage, loadImage } from "./loader.ts";
+import { type FileOps, type LoadedImage, loadImage, loadImageBytes } from "./loader.ts";
 import type { PreviewEntry } from "./transcript-entry.ts";
 
 export interface RuntimeDeps {
 	env?: Environment;
 	output?: Sink;
 	loader?: typeof loadImage;
+	byteLoader?: typeof loadImageBytes;
 	fs?: FileOps;
 	/** Test/runtime override for Pi's detected image protocol. */
 	imageProtocol?: "kitty" | "iterm2" | null;
@@ -32,6 +33,7 @@ export class PreviewRuntime {
 	private readonly env: Environment;
 	private readonly output: Sink;
 	private readonly loader: typeof loadImage;
+	private readonly byteLoader: typeof loadImageBytes;
 	private readonly fs?: FileOps;
 	private readonly allocate: () => number;
 	private readonly protocol: "kitty" | "iterm2" | null;
@@ -45,6 +47,7 @@ export class PreviewRuntime {
 		this.env = deps.env ?? process.env;
 		this.output = deps.output ?? { write: (s) => process.stdout.write(s) };
 		this.loader = deps.loader ?? loadImage;
+		this.byteLoader = deps.byteLoader ?? loadImageBytes;
 		this.fs = deps.fs;
 		this.allocate = deps.allocateImageId ?? allocateImageId;
 		this.protocol = deps.imageProtocol === undefined ? getCapabilities().images : deps.imageProtocol;
@@ -81,12 +84,33 @@ export class PreviewRuntime {
 	get(id: string): LoadedImage | undefined {
 		return this.images.get(id);
 	}
-	async rehydrate(entries: PreviewEntry[], cwd?: string): Promise<Map<string, string>> {
+	async addBytes(data: string, mimeType: string, logicalId: string, path = "attached image"): Promise<PreviewEntry> {
+		const image = await this.byteLoader(data, mimeType, path);
+		this.images.set(logicalId, image);
+		this.id(logicalId);
+		return {
+			path: image.path,
+			hash: image.hash,
+			originalMime: image.originalMime,
+			width: image.width,
+			height: image.height,
+			logicalId,
+		};
+	}
+	async rehydrate(
+		entries: PreviewEntry[],
+		cwd?: string,
+		resolve?: (entry: PreviewEntry) => { data: string; mimeType: string } | undefined,
+	): Promise<Map<string, string>> {
 		this.images.clear();
 		const state = new Map<string, string>();
 		for (const entry of entries)
 			try {
-				const image = await this.loader(entry.path, { cwd, fs: this.fs });
+				const source = entry.origin ? resolve?.(entry) : undefined;
+				if (entry.origin && !source) throw new Error("origin unavailable");
+				const image = source
+					? await this.byteLoader(source.data, source.mimeType, entry.path)
+					: await this.loader(entry.path, { cwd, fs: this.fs });
 				if (image.hash !== entry.hash) state.set(entry.logicalId, "Image changed since this preview was saved.");
 				else {
 					this.images.set(entry.logicalId, image);

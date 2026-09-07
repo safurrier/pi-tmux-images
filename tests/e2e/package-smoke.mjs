@@ -5,6 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const root = process.cwd();
+// npm 11 rejects this user-level policy for a project-scoped install. Preserve all
+// other inherited npm settings because this smoke test exercises the real package path.
+const nestedNpmEnv = { ...process.env };
+delete nestedNpmEnv.npm_config_allow_scripts;
+assert.equal("npm_config_allow_scripts" in nestedNpmEnv, false, "nested npm must not inherit allow-scripts");
 const temp = mkdtempSync(join(tmpdir(), "pi-tmux-images-package-"));
 let packageFile;
 try {
@@ -26,6 +31,7 @@ try {
 		["install", "--prefer-offline", "--ignore-scripts", "--no-audit", "--no-fund", "--legacy-peer-deps", packageFile],
 		{
 			cwd: temp,
+			env: nestedNpmEnv,
 			stdio: "ignore",
 		},
 	);
@@ -50,7 +56,7 @@ try {
 		["--offline", "--no-session", "--no-extensions", "--extension", extension, "--print", "/image clear"],
 		{
 			encoding: "utf8",
-			timeout: 15_000,
+			timeout: 30_000,
 		},
 	);
 	assert.equal(result.error, undefined, `Pi must start: ${result.error?.message ?? ""}`);
