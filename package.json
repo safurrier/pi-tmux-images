@@ -1,6 +1,6 @@
 {
 	"name": "pi-tmux-images",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Tmux-safe, TUI-only local image previews for Pi",
 	"license": "MIT",
 	"author": "Alex Furrier",
