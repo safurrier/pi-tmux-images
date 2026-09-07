@@ -31,8 +31,9 @@ function required(
 	executable: string,
 	args: string[],
 	description: string,
+	options: CommandOptions = {},
 ): CommandResult {
-	const result = run(executable, args, { cwd });
+	const result = run(executable, args, { ...options, cwd });
 	if (result.status !== 0) {
 		const detail = (result.stderr || result.stdout).trim();
 		throw new ReleaseError(`${description} failed.${detail ? ` ${detail}` : ""}`);
@@ -109,13 +110,17 @@ function parseJson<T>(value: string, description: string): T {
 	}
 }
 
+function isNpmNotFound(result: CommandResult): boolean {
+	return /\bE404\b|404 Not Found|is not in this registry/iu.test(`${result.stderr}\n${result.stdout}`);
+}
+
 function noTargetOnNpm(run: CommandRunner, root: string, target: string): void {
 	const result = run("npm", ["view", `${PACKAGE}@${target}`, "version", "--json"], { cwd: root });
 	if (result.status === 0)
 		throw new ReleaseError(
 			`npm already contains ${PACKAGE}@${target}; choose a new version or use the documented recovery steps.`,
 		);
-	if (!/\bE404\b|404 Not Found|is not in this registry/iu.test(`${result.stderr}\n${result.stdout}`))
+	if (!isNpmNotFound(result))
 		throw new ReleaseError(`Unable to confirm ${PACKAGE}@${target} is absent from npm; refusing to release.`);
 }
 
@@ -221,35 +226,64 @@ function waitForPublish(run: CommandRunner, root: string, sha: string, sleep: (m
 	);
 }
 
-function verifyPublishedPackage(run: CommandRunner, root: string, target: string): void {
-	const version = required(
-		run,
-		root,
-		"npm",
-		["view", `${PACKAGE}@${target}`, "version", "--json"],
-		"Published npm version check",
-	);
-	if (parseJson<string>(version.stdout, "Published npm version check") !== target)
-		throw new ReleaseError(`npm did not report ${PACKAGE}@${target}.`);
-	const tags = required(run, root, "npm", ["dist-tag", "ls", PACKAGE], "npm latest tag check").stdout;
-	if (!new RegExp(`^latest:\\s*${target}$`, "m").test(tags))
-		throw new ReleaseError(`npm latest does not point to ${target}.`);
-	const attestations = required(
-		run,
-		root,
-		"npm",
-		["view", `${PACKAGE}@${target}`, "dist.attestations", "--json"],
-		"npm provenance check",
-	).stdout;
-	const parsed = parseJson<unknown>(attestations, "npm provenance check");
-	if (!parsed || !/provenance/iu.test(JSON.stringify(parsed)))
-		throw new ReleaseError("npm did not report provenance attestations for the published package.");
+function verifyPublishedPackage(
+	run: CommandRunner,
+	root: string,
+	target: string,
+	sleep: (milliseconds: number) => void,
+): void {
+	let pending = `npm did not report ${PACKAGE}@${target}.`;
+	for (let attempt = 0; attempt < 30; attempt++) {
+		const version = run("npm", ["view", `${PACKAGE}@${target}`, "version", "--json"], { cwd: root });
+		if (version.status !== 0) {
+			if (!isNpmNotFound(version)) {
+				const detail = (version.stderr || version.stdout).trim();
+				throw new ReleaseError(`Published npm version check failed.${detail ? ` ${detail}` : ""}`);
+			}
+			pending = `npm did not report ${PACKAGE}@${target}.`;
+		} else if (parseJson<string>(version.stdout, "Published npm version check") !== target) {
+			throw new ReleaseError(`npm reported the wrong version for ${PACKAGE}@${target}.`);
+		} else {
+			const tags = run("npm", ["dist-tag", "ls", PACKAGE], { cwd: root });
+			if (tags.status !== 0) {
+				if (!isNpmNotFound(tags)) {
+					const detail = (tags.stderr || tags.stdout).trim();
+					throw new ReleaseError(`npm latest tag check failed.${detail ? ` ${detail}` : ""}`);
+				}
+				pending = `npm did not report dist-tags for ${PACKAGE}.`;
+			} else if (!new RegExp(`^latest:\\s*${target}$`, "m").test(tags.stdout)) {
+				pending = `npm latest does not point to ${target}.`;
+			} else {
+				const attestations = run("npm", ["view", `${PACKAGE}@${target}`, "dist.attestations", "--json"], {
+					cwd: root,
+				});
+				if (attestations.status !== 0) {
+					if (!isNpmNotFound(attestations)) {
+						const detail = (attestations.stderr || attestations.stdout).trim();
+						throw new ReleaseError(`npm provenance check failed.${detail ? ` ${detail}` : ""}`);
+					}
+					pending = "npm did not report provenance attestations for the published package.";
+				} else {
+					const parsed = parseJson<unknown>(attestations.stdout, "npm provenance check");
+					if (parsed && /provenance/iu.test(JSON.stringify(parsed))) return;
+					pending = "npm did not report provenance attestations for the published package.";
+				}
+			}
+		}
+		if (attempt < 29) sleep(2_000);
+	}
+	throw new ReleaseError(pending);
 }
 
 function smokeInstall(run: CommandRunner, target: string): void {
 	const directory = mkdtempSync(join(tmpdir(), "pi-tmux-images-release-smoke-"));
+	const npmEnvironment = { ...process.env };
+	for (const key of Object.keys(npmEnvironment))
+		if (key.toLowerCase() === "npm_config_allow_scripts") delete npmEnvironment[key];
 	try {
-		required(run, directory, "npm", ["init", "-y"], "Temporary smoke project setup");
+		required(run, directory, "npm", ["init", "-y"], "Temporary smoke project setup", {
+			env: npmEnvironment,
+		});
 		required(
 			run,
 			directory,
@@ -266,6 +300,7 @@ function smokeInstall(run: CommandRunner, target: string): void {
 				"--local",
 			],
 			"Temporary npm Pi install smoke",
+			{ env: npmEnvironment },
 		);
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
@@ -321,7 +356,7 @@ export function executeRelease(target: string, options: ReleaseOptions = {}): vo
 		);
 	}
 	waitForPublish(run, root, releaseSha, sleep);
-	verifyPublishedPackage(run, root, target);
+	verifyPublishedPackage(run, root, target, sleep);
 	smokeInstall(run, target);
 	(options.write ?? console.log)(`Release ${target} completed.`);
 }
